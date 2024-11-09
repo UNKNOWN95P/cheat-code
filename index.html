@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alphabetical List with Code Authentication</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #333;
+            border-radius: 8px;
+        }
+        input[type="text"], textarea {
+            width: 80%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            color: black;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        .list-container {
+            margin-top: 20px;
+            padding: 10px;
+            border-top: 2px solid #fff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #444;
+        }
+        th {
+            text-align: left;
+            background-color: #555;
+        }
+        td {
+            background-color: #444;
+        }
+        button {
+            background-color: red;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: darkred;
+        }
+        .error {
+            color: red;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        /* Smaller width for the search box */
+        #searchBox {
+            width: 30%; /* Adjust the width to make it smaller */
+            padding: 8px;
+        }
+
+        /* Code Prompt styling */
+        .code-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-color: #222;
+            color: #fff;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Code Prompt Section (Initially Visible) -->
+<div id="codePrompt" class="code-container">
+    <h2>Enter Access Code</h2>
+    <input type="text" id="codeInput" placeholder="Enter code" />
+    <button onclick="validateCode()">Submit</button>
+    <div id="codeError" class="error"></div>
+</div>
+
+<!-- Main Content (Initially Hidden) -->
+<div id="mainContent" class="container" style="display: none;">
+    <h1>Enter Name and Number (A to Z)</h1>
+    <textarea id="inputBox" placeholder="Enter multiple items (e.g., John-123, Alice-456)"></textarea>
+    <button onclick="addItems()">Add Items</button>
+    <button onclick="saveData()">Save</button>
+
+    <input type="text" id="searchBox" placeholder="Search..." onkeyup="filterList()">
+    
+    <!-- Error message container -->
+    <div id="errorMessage" class="error"></div>
+
+    <div class="list-container">
+        <table id="itemList">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Number</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- List items will appear here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let itemList = [];
+    const correctCode = "3132";  // Set the correct code here
+    let isAuthenticated = false;  // Flag to track if the user is authenticated
+
+    // Load saved data from localStorage
+    window.onload = function() {
+        loadData();
+    };
+
+    // Function to validate the code
+    function validateCode() {
+        const enteredCode = document.getElementById('codeInput').value.trim();
+        if (enteredCode === correctCode) {
+            isAuthenticated = true;
+            document.getElementById('codePrompt').style.display = 'none'; // Hide code prompt
+            document.getElementById('mainContent').style.display = 'block'; // Show main content
+        } else {
+            document.getElementById('codeError').textContent = 'Incorrect code. Please try again.';
+        }
+    }
+
+    // Function to add multiple items
+    function addItems() {
+        if (!isAuthenticated) {
+            alert('Please enter the correct code first.');
+            return;
+        }
+
+        const inputBox = document.getElementById('inputBox');
+        const inputValue = inputBox.value.trim();
+
+        if (!inputValue) {
+            alert('Please enter a valid name and number.');
+            return;
+        }
+
+        // Split the input by newlines or commas, and process each line
+        const items = inputValue.split(/[\n,]+/).map(item => item.trim());
+
+        let errorMessage = ''; // To accumulate any error messages
+
+        // Process each item
+        items.forEach(item => {
+            // Split into name and number based on the "-" separator
+            const parts = item.split('-');
+            if (parts.length !== 2) {
+                errorMessage += `Invalid format for entry: "${item}". Please use "Name-Number" format.\n`;
+                return;
+            }
+
+            const name = parts[0].trim();
+            const number = parts[1].trim();
+
+            // Check if the item already exists (both name and number should match)
+            const exists = itemList.some(existingItem => existingItem.name === name && existingItem.number === number);
+
+            if (exists) {
+                errorMessage += `This item already exists: ${item}\n`;
+                return;
+            }
+
+            // Add the new item to the list
+            itemList.push({ name, number });
+        });
+
+        // Show error message if any
+        if (errorMessage) {
+            document.getElementById('errorMessage').textContent = errorMessage;
+        } else {
+            document.getElementById('errorMessage').textContent = ''; // Clear error if no errors
+        }
+
+        inputBox.value = '';  // Clear input box
+        displayList();
+        saveData(); // Save the data after adding items
+    }
+
+    // Function to display the list sorted alphabetically by name
+    function displayList() {
+        const itemListElement = document.getElementById('itemList').getElementsByTagName('tbody')[0];
+        itemListElement.innerHTML = ''; // Clear the table before re-rendering
+        
+        // Sort the list alphabetically by name
+        const sortedList = itemList.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+        
+        // Create a table row for each item
+        sortedList.forEach((item, index) => {
+            const row = itemListElement.insertRow();
+            const nameCell = row.insertCell(0);
+            const numberCell = row.insertCell(1);
+            const actionCell = row.insertCell(2);
+            
+            nameCell.textContent = item.name;
+            numberCell.textContent = item.number;
+            
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.onclick = () => deleteItem(index);
+            actionCell.appendChild(deleteButton);
+        });
+    }
+
+    // Function to delete an item by its index
+    function deleteItem(index) {
+        itemList.splice(index, 1); // Remove the item from the list
+        displayList(); // Re-render the list
+        saveData(); // Save the updated list to localStorage
+    }
+
+    // Function to filter the list based on search input
+    function filterList() {
+        const searchBox = document.getElementById('searchBox');
+        const filter = searchBox.value.toLowerCase();
+        
+        // Filter the list based on name
+        const filteredList = itemList.filter(item => item.name.toLowerCase().includes(filter));
+        
+        // Sort filtered list alphabetically
+        filteredList.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+                    .forEach((item, index) => {
+            const itemListElement = document.getElementById('itemList').getElementsByTagName('tbody')[0];
+            itemListElement.innerHTML = ''; // Clear the table before re-rendering
+            // Create list of filtered items
+            filteredList.forEach(item => {
+                const row = itemListElement.insertRow();
+                const nameCell = row.insertCell(0);
+                const numberCell = row.insertCell(1);
+                const actionCell = row.insertCell(2);
+                
+                nameCell.textContent = item.name;
+                numberCell.textContent = item.number;
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => deleteItem(index);
+                actionCell.appendChild(deleteButton);
+            });
+        });
+    }
+
+    // Function to save the data to localStorage
+    function saveData() {
+        localStorage.setItem('itemList', JSON.stringify(itemList));
+    }
+
+    // Function to load saved data from localStorage
+    function loadData() {
+        const savedData = localStorage.getItem('itemList');
+        if (savedData) {
+            itemList = JSON.parse(savedData);
+            displayList(); // Display the list when the page loads
+        }
+    }
+</script>
+
+</body>
+</html>
